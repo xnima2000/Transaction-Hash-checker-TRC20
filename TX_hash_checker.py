@@ -1,7 +1,8 @@
 from datetime import datetime
+import time
 import requests
 from requests.exceptions import RequestException
-"""This program checks the sender and receiver of the transaction in TRC20 network USDT"""
+
 # Define the USDT contract address on TRON network
 usdt_contract = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
 
@@ -15,7 +16,7 @@ def get_tx_info(tx_hash, wallet_customer, wallet_bugs):
         # tx_response = requests.get(tx_url).json()
         tx_response = requests.get(tx_url)
 
-         # Check if the response status code is 200
+        # Check if the response status code is 200
         if tx_response. status_code != 200:
             return {'status': False, 'msg': f"Error: Received non-200 status code: {tx_response.status_code}"}
 
@@ -31,7 +32,7 @@ def get_tx_info(tx_hash, wallet_customer, wallet_bugs):
         
         confirmations = tx_data["confirmations"]
         min_confirmations = 20 # Change this to your desired number
-        if confirmations < min_confirmations:
+        if confirmations < min_confirmations or not tx_data["confirmed"]:
             return {'status': False, 'msg': "Warning: The transaction is not confirmed by enough blocks."}
         
         sender = tx_data["ownerAddress"]
@@ -50,11 +51,17 @@ def get_tx_info(tx_hash, wallet_customer, wallet_bugs):
         if revert == True:
             return {'status': False, 'msg': "revert happened. probably your money will come back to your wallet."}
         # below here is accepted tx.
-        time = tx_data["timestamp"]
-        timestamp = time / 1000 
+        time_TX = tx_data["timestamp"]
+        timestamp = time_TX / 1000
+        now = time.time()
+        now = (now // 60) * 60
+        time_difference = now - time_TX
+        if time_difference >600:
+            return {'status': False, 'msg': "Your submission time for the TX hash has expired. However, you can contact our support team for further information and assistance."}
+        
         date_time = datetime.fromtimestamp(timestamp)
         # Get the amount of USDT transferred (in sun, need to divide by 10**6)
-        amount = int(tx_data["trigger_info"]["parameter"]["_value"]) / 10**6
+        amount = float(tx_data["trigger_info"]["parameter"]["_value"]) / 10**6
         return {'status': True, 'msg': "TX was successfully added", 'time': date_time, 'amount': amount}
         
     except RequestException as e:
